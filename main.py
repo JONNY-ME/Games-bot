@@ -5,6 +5,9 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ParseMode
+from aiogram.utils.markdown import text
+import aiogram.utils.markdown as md
+
 from Games import NumberGame
 
 
@@ -37,20 +40,25 @@ async def cmd_number_game(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=Form.action)
 async def process_number_game(message: types.Message, state: FSMContext):
-    num_game = await state.proxy.get_data('num_game')
-    result, mess = num_game.guess(message.text)
-    if result == 1:
-        await message.reply("You won!")
-        await state.finish()
-    elif result == -1:
-        await message.reply("You lost!")
-        await state.finish()
-    else:
-        msg = ""
-        if mess:
-            msg += mess + "\n"
-        msg += "Enter your guess"
-        await message.reply(msg)
+    async with state.proxy() as data:
+        num_game = data['num_game']
+        result, mess = num_game.guess(message.text)
+        if result == 1:
+            await message.reply("You won!")
+            await bot.send_message(message.chat.id, "Enter /number_game to start a new game")
+            await state.finish()
+        elif result == -1:
+            await message.reply(f"You lost! The number was {num_game.get_generated_number()}")
+            await state.finish()
+        else:
+            msg = ""
+            if mess:
+                msg += "❌"+mess + "\n"
+            msg += md.code(num_game.get_formatted_guesses())
+            msg += "\nEnter your guess"
+            # monospace font
+
+            await message.reply(msg, parse_mode=ParseMode.MARKDOWN)
     
 
 

@@ -1,4 +1,5 @@
 import random 
+from tabulate import tabulate
 
 class NumberGame:
 
@@ -43,9 +44,6 @@ class NumberGame:
         
         return num, pos
 
-    def get_guesses(self):
-        return self.guesses
-
     def is_valid(self, guess:str):
         try:
             x = int(guess)
@@ -59,4 +57,18 @@ class NumberGame:
                 return True, None
         except:
             return False, 'Input must be a number, please try again'
+    
+    def get_generated_number(self):
+        return "".join(map(str, self.generated_number))
+    
+    def get_guesses(self):
+        return self.guesses
+
+    def get_formatted_guesses(self):
+        msg = ["Guess", "Num", "Correct"]
+        guesses = []
+        for j in self.get_guesses():
+            guesses.append(list(map(str, j)))
+
+        return tabulate(guesses, headers=msg, tablefmt="fancy_grid")
 
