@@ -1,3 +1,5 @@
 tabulate==0.8.9
 python-decouple==3.6
 aiogram==2.19
+motor==2.5.1
+pymongo==3.12.3
