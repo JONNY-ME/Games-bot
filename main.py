@@ -5,10 +5,9 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ParseMode
-from aiogram.utils.markdown import text
-import aiogram.utils.markdown as md
-
+from aiogram.utils import markdown as md
 from Games import NumberGame, XOGame
+from database import db
 
 
 API_TOKEN = config('API_TOKEN')
@@ -28,12 +27,34 @@ dp = Dispatcher(bot, storage=storage)
 
 
 
+game_list = {
+    '/number_game': 'NumberGame',
+    '/xo_game': 'XOGame'
+}
+
 @dp.message_handler(commands=['start'], state='*')
+async def cmd_start(message: types.Message, state: FSMContext):
+    try:
+        await db.users.insert_one({'_id': message.from_user.id, 
+                                'username': message.from_user.username, 
+                                'first_name': message.from_user.first_name,
+                                'last_name': message.from_user.last_name,
+                                'is_acitve': True,
+                                'date_joined': message.date})
+    except:
+        pass
+    if state.get_state() is not None:
+        await state.finish()
+    await message.reply("Hello, welcome to the bot!\nEnter /list_games to see all available games")
+
+@dp.message_handler(commands=['list_games'], state='*')
 async def cmd_start(message: types.Message, state: FSMContext):
     if state.get_state() is not None:
         await state.finish()
-    await message.reply("Hello, welcome to the bot!")
-
+    msg = "Here is the list of games:\n"
+    for key in game_list:
+        msg += f"{md.hbold(game_list[key])}: -> {key}\n"
+    await message.reply(msg, parse_mode=ParseMode.HTML)
 
 
 @dp.message_handler(commands=['number_game'], state='*')
@@ -43,11 +64,12 @@ async def cmd_number_game(message: types.Message, state: FSMContext):
     num_game = NumberGame()
     async with state.proxy() as data:
         data['num_game'] = num_game
-    await message.reply("Enter a guess: ")
-    await NForm.action.set()
+        mes = await message.reply("Enter a guess: ")
+        data['mes_id'] = mes.message_id
+        await NForm.action.set()
 
 
-@dp.message_handler(lambda message: message.text not in ['start', 'number_game'], state=NForm.action)
+@dp.message_handler(state=NForm.action)
 async def process_number_game(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         num_game = data['num_game']
@@ -65,8 +87,12 @@ async def process_number_game(message: types.Message, state: FSMContext):
                 msg += "❌"+mess + "\n"
             msg += md.code(num_game.get_formatted_guesses()) + "\nEnter your guess"
             try:
-                await message.edit_text(msg, parse_mode=ParseMode.MARKDOWN)
-            except:
+                await bot.delete_message(message.chat.id, message.message_id)
+                await bot.delete_message(message.chat.id, data['mes_id'])
+                mes = await bot.send_message(message.chat.id, msg, parse_mode=ParseMode.MARKDOWN)
+                data['mes_id'] = mes.message_id
+            except Exception as e:
+                print(e)
                 pass
 
 
@@ -100,8 +126,8 @@ async def process_xo_game(query: types.InlineQuery, state: FSMContext):
         result, mess = xo_game.next_move(data)
         if result == 1:
             await query.message.delete()
-            msg = md.code(xo_game.get_formatted_board()) + "\n" + mess
-            await bot.send_message(query.from_user.id, msg, parse_mode=ParseMode.MARKDOWN)
+            msg = md.hcode(xo_game.get_formatted_board()) + "\n" + mess + "\n" + "Enter /xo_game to start a new game"
+            await bot.send_message(query.from_user.id, msg, parse_mode=ParseMode.HTML)
             await state.finish()
         else:
             if result == 0:
