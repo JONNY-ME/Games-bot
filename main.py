@@ -16,7 +16,7 @@ API_TOKEN = config('API_TOKEN')
 logging.basicConfig(level=logging.INFO)
 
 
-class Form(StatesGroup):
+class NForm(StatesGroup):
     action = State()
 
 
@@ -32,13 +32,12 @@ async def cmd_start(message: types.Message):
 @dp.message_handler(commands=['number_game'])
 async def cmd_number_game(message: types.Message, state: FSMContext):
     num_game = NumberGame()
-    # store the num_game in state proxy data
     async with state.proxy() as data:
         data['num_game'] = num_game
     await message.reply("Enter a guess: ")
-    await Form.action.set()
+    await NForm.action.set()
 
-@dp.message_handler(state=Form.action)
+@dp.message_handler(state=NForm.action)
 async def process_number_game(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         num_game = data['num_game']
@@ -56,7 +55,6 @@ async def process_number_game(message: types.Message, state: FSMContext):
                 msg += "❌"+mess + "\n"
             msg += md.code(num_game.get_formatted_guesses())
             msg += "\nEnter your guess"
-            # monospace font
 
             await message.reply(msg, parse_mode=ParseMode.MARKDOWN)
     
