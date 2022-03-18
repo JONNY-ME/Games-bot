@@ -1,5 +1,4 @@
 import random
-import re 
 from tabulate import tabulate
 
 class NumberGame:
