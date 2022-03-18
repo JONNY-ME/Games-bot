@@ -122,7 +122,7 @@ class XOGame:
             if len(set(row))==1 and row[0]!="_":
                 return True 
         for col in zip(*map(list, self.board)):
-            if len(set(row))==1 and row[0]!="_":
+            if len(set(col))==1 and col[0]!="_":
                 return True 
         
         return False
