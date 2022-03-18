@@ -1,4 +1,5 @@
-import random 
+import random
+import re 
 from tabulate import tabulate
 
 class NumberGame:
@@ -72,3 +73,75 @@ class NumberGame:
 
         return tabulate(guesses, headers=msg, tablefmt="fancy_grid")
 
+
+
+class XOGame:
+
+    def __init__(self, level=0) -> None:
+        self.board = [["_" for i in range(3)] for j in range(3)]
+        self.level = level
+
+    def __str__(self):
+        return "\n".join(map(lambda x:" ".join(x), self.board))
+
+    def next_move(self, move:str):
+        try:
+            move = int(move)
+            if move < 0 or move > 8:
+                return -1, "Input must be for 0 to 8"
+            else:
+                i, j = divmod(move, 3)
+                if self.board[i][j] == "_":
+                    self.add_move(i, j)
+                    if self.is_done():
+                        return 1, "you won!"
+                    elif self.no_spot():
+                        return 1, "Tie!"
+                    self.play()
+                    if self.is_done():
+                        return 1, "You lose!"
+                    elif self.no_spot():
+                        return 1, "Tie!"
+                    else:
+                        return 0, None
+                else:
+                    return -1, "Spot is already occupied"
+        except:
+            return -1, "Input must be an integer"
+    
+    def add_move(self, i, j, char="X"):
+        self.board[i][j] = char   
+    
+    def is_done(self):
+        diag1 = ""
+        diag2 = ""
+        for n in range(3):
+            diag1 += self.board[n][n]
+            diag2 += self.board[n][2-n]
+        for row in self.board+[diag1, diag2]:
+            if len(set(row))==1 and row[0]!="_":
+                return True 
+        for col in zip(*map(list, self.board)):
+            if len(set(row))==1 and row[0]!="_":
+                return True 
+        
+        return False
+    
+    def no_spot(self):
+        return "_" not in str(self)
+    
+    def play(self):
+        i, j = None, None
+        if self.level == 0:
+            pos_spots = []
+            for i in range(3):
+                for j in range(3):
+                    if self.board[i][j] == "_":
+                        pos_spots.append((i, j))
+            i, j = random.choice(pos_spots)
+        self.add_move(i, j, "O")
+
+    def get_formatted_board(self):
+        return tabulate(self.board, tablefmt="fancy_grid")
+
+        
