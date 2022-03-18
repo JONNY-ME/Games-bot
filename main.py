@@ -8,7 +8,7 @@ from aiogram.types import ParseMode
 from aiogram.utils.markdown import text
 import aiogram.utils.markdown as md
 
-from Games import NumberGame
+from Games import NumberGame, XOGame
 
 
 API_TOKEN = config('API_TOKEN')
@@ -19,6 +19,8 @@ logging.basicConfig(level=logging.INFO)
 class NForm(StatesGroup):
     action = State()
 
+class XOForm(StatesGroup):
+    action = State()
 
 bot = Bot(token=API_TOKEN)
 storage = MemoryStorage()
@@ -58,6 +60,51 @@ async def process_number_game(message: types.Message, state: FSMContext):
 
             await message.reply(msg, parse_mode=ParseMode.MARKDOWN)
     
+@dp.message_handler(commands=['xo_game'])
+async def cmd_xo_game(message: types.Message, state: FSMContext):
+    xo_game = XOGame()
+
+    async with state.proxy() as data:
+        data['xo_game'] = xo_game
+    in_kbrd = []
+    j = 0
+    for i in xo_game.board:
+        _t = []
+        for x in i:
+            _t.append(types.InlineKeyboardButton(text=str(x), callback_data="XO "+str(j)))
+            j += 1
+        in_kbrd.append(_t)
+    markup = types.InlineKeyboardMarkup(inline_keyboard=in_kbrd)
+    await message.reply("Enter a move: ", reply_markup=markup)
+    await XOForm.action.set()
+
+
+@dp.callback_query_handler(lambda call: call.data.startswith("XO"), state=XOForm.action)
+async def process_xo_game(query: types.InlineQuery, state: FSMContext):
+    async with state.proxy() as sdata:
+        xo_game = sdata['xo_game']
+        data = query.data.split()[1]
+        result, mess = xo_game.next_move(data)
+        if result == 1:
+            await query.answer(mess)
+            await bot.send_message(query.from_user.id, mess)
+            await state.finish()
+        else:
+            if result == 0:
+                mess = "Enter the next move"
+
+            in_kbrd = []
+            j = 0
+            for i in xo_game.board:
+                _t = []
+                for x in i:
+                    _t.append(types.InlineKeyboardButton(text=str(x), callback_data="XO "+str(j)))
+                    j += 1
+                in_kbrd.append(_t)
+            markup = types.InlineKeyboardMarkup(inline_keyboard=in_kbrd)
+            await query.message.edit_text(text=mess, reply_markup=markup)
+
+            sdata['xo_game'] = xo_game
 
 
 if __name__ == '__main__':
