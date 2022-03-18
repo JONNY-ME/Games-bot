@@ -27,19 +27,27 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 
-@dp.message_handler(commands=['start'])
-async def cmd_start(message: types.Message):
+
+@dp.message_handler(commands=['start'], state='*')
+async def cmd_start(message: types.Message, state: FSMContext):
+    if state.get_state() is not None:
+        await state.finish()
     await message.reply("Hello, welcome to the bot!")
 
-@dp.message_handler(commands=['number_game'])
+
+
+@dp.message_handler(commands=['number_game'], state='*')
 async def cmd_number_game(message: types.Message, state: FSMContext):
+    if state.get_state() is not None:
+        await state.finish()
     num_game = NumberGame()
     async with state.proxy() as data:
         data['num_game'] = num_game
     await message.reply("Enter a guess: ")
     await NForm.action.set()
 
-@dp.message_handler(state=NForm.action)
+
+@dp.message_handler(lambda message: message.text not in ['start', 'number_game'], state=NForm.action)
 async def process_number_game(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         num_game = data['num_game']
@@ -55,15 +63,19 @@ async def process_number_game(message: types.Message, state: FSMContext):
             msg = ""
             if mess:
                 msg += "❌"+mess + "\n"
-            msg += md.code(num_game.get_formatted_guesses())
-            msg += "\nEnter your guess"
+            msg += md.code(num_game.get_formatted_guesses()) + "\nEnter your guess"
+            try:
+                await message.edit_text(msg, parse_mode=ParseMode.MARKDOWN)
+            except:
+                pass
 
-            await message.reply(msg, parse_mode=ParseMode.MARKDOWN)
-    
-@dp.message_handler(commands=['xo_game'])
+
+
+@dp.message_handler(commands=['xo_game'], state="*")
 async def cmd_xo_game(message: types.Message, state: FSMContext):
+    if state.get_state() is not None:
+        await state.finish()
     xo_game = XOGame()
-
     async with state.proxy() as data:
         data['xo_game'] = xo_game
     in_kbrd = []
@@ -79,6 +91,7 @@ async def cmd_xo_game(message: types.Message, state: FSMContext):
     await XOForm.action.set()
 
 
+
 @dp.callback_query_handler(lambda call: call.data.startswith("XO"), state=XOForm.action)
 async def process_xo_game(query: types.InlineQuery, state: FSMContext):
     async with state.proxy() as sdata:
@@ -86,8 +99,9 @@ async def process_xo_game(query: types.InlineQuery, state: FSMContext):
         data = query.data.split()[1]
         result, mess = xo_game.next_move(data)
         if result == 1:
-            await query.answer(mess)
-            await bot.send_message(query.from_user.id, mess)
+            await query.message.delete()
+            msg = md.code(xo_game.get_formatted_board()) + "\n" + mess
+            await bot.send_message(query.from_user.id, msg, parse_mode=ParseMode.MARKDOWN)
             await state.finish()
         else:
             if result == 0:
@@ -102,9 +116,12 @@ async def process_xo_game(query: types.InlineQuery, state: FSMContext):
                     j += 1
                 in_kbrd.append(_t)
             markup = types.InlineKeyboardMarkup(inline_keyboard=in_kbrd)
-            await query.message.edit_text(text=mess, reply_markup=markup)
-
+            try:
+                await query.message.edit_text(text=mess, reply_markup=markup)
+            except:
+                pass
             sdata['xo_game'] = xo_game
+
 
 
 if __name__ == '__main__':

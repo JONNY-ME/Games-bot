@@ -142,6 +142,9 @@ class XOGame:
         self.add_move(i, j, "O")
 
     def get_formatted_board(self):
-        return tabulate(self.board, tablefmt="fancy_grid")
+        board = []
+        for i in self.board:
+            board.append(map(lambda x:[x, ""][x=="_"], i))
+        return tabulate(board, tablefmt="fancy_grid")
 
         
